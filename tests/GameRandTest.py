@@ -1,8 +1,9 @@
 import os
 import math
 import random
+import hashlib
 from itertools import product
-from scipy.special import comb
+#from scipy.special import comb
 
 
 def read_moves_from_file(file_path):
@@ -90,12 +91,24 @@ def analyze_nist_results(results, significance=0.15):
             passed_tests += 1
     return (passed_tests / total_tests) * 100
 
+def extractor(moveset):
+    decimal_string = ""
+    for move in moveset:
+        decimal_string += str(move[0])
+        decimal_string += str(move[1])
+    binary_string = bin(int(decimal_string))[2:]
+    sha1string = hashlib.sha1(binary_string.encode())
+    return bin((int(sha1string.hexdigest(),16)))[2:130]
+    
+
+    
 def main():
     file_path = 'moves (2).txt'
     moves = read_moves_from_file(file_path)
     print(moves)
     entropy = calculate_entropy(moves)
     print(entropy)
+    normalised_sequence = extractor(moves)
     binary_sequence = deterministic_rng(entropy, 100)
     block_length = 8
     blocks = divide_binary_sequence(binary_sequence, block_length)
