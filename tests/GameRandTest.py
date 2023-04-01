@@ -3,7 +3,7 @@ import math
 import random
 import hashlib
 from itertools import product
-#from scipy.special import comb
+from scipy.special import comb
 
 
 def read_moves_from_file(file_path):
@@ -22,22 +22,32 @@ def calculate_entropy(moves):
         move_counts[move] = move_counts.get(move, 0) + 1
 
     entropy = 0
+    remaining_moves = 100
+
     for count in move_counts.values():
-        probability = count / total_moves
+        probability = count / remaining_moves
         entropy += -probability * math.log2(probability)
+        remaining_moves -= 1
 
     return entropy
-
-
-def deterministic_rng(seed, length):
-    random.seed(seed)
-    numbers = [random.randint(0, 1) for _ in range(length)]
-    return numbers
 
 
 def divide_binary_sequence(sequence, block_length):
     blocks = [sequence[i:i + block_length] for i in range(0, len(sequence), block_length)]
     return blocks
+
+def extractor(moveset):
+    decimal_string = ""
+    for move in moveset:
+        decimal_string += str(move[0])
+        decimal_string += str(move[1])
+    binary_string = bin(int(decimal_string))[2:]
+    sha1string = hashlib.sha1(binary_string.encode())
+    binary_sha1 = bin((int(sha1string.hexdigest(), 16)))[2:130]
+
+    # Convert the binary string to a list of bits
+    bit_list = [int(bit) for bit in binary_sha1]
+    return bit_list
 
 
 def frequency_test(block):
@@ -61,6 +71,9 @@ def runs_test(block):
         if block[i] != block[i - 1]:
             runs += 1
 
+    if pi == 0 or pi == 1:
+        return 0.0
+
     test_statistic = (runs - 2 * n * pi * (1 - pi)) / (2 * math.sqrt(2 * n) * pi * (1 - pi))
     p_value = math.erfc(abs(test_statistic) / math.sqrt(2))
     return p_value
@@ -83,7 +96,7 @@ def serial_test(block):
     p_value = math.erfc(sum_chi_squared / (2 * math.sqrt(2 * (n - m + 1))))
     return p_value
 
-def analyze_nist_results(results, significance=0.15):
+def analyze_nist_results(results, significance=0.01):
     passed_tests = 0
     total_tests = len(results)
     for result in results:
@@ -91,27 +104,17 @@ def analyze_nist_results(results, significance=0.15):
             passed_tests += 1
     return (passed_tests / total_tests) * 100
 
-def extractor(moveset):
-    decimal_string = ""
-    for move in moveset:
-        decimal_string += str(move[0])
-        decimal_string += str(move[1])
-    binary_string = bin(int(decimal_string))[2:]
-    sha1string = hashlib.sha1(binary_string.encode())
-    return bin((int(sha1string.hexdigest(),16)))[2:130]
-    
-
-    
 def main():
     file_path = 'moves (2).txt'
     moves = read_moves_from_file(file_path)
     print(moves)
     entropy = calculate_entropy(moves)
     print(entropy)
-    normalised_sequence = extractor(moves)
-    binary_sequence = deterministic_rng(entropy, 100)
+    binary_sequence = extractor(moves)
+    print(binary_sequence)
     block_length = 8
     blocks = divide_binary_sequence(binary_sequence, block_length)
+    print(blocks)
 
     nist_tests = [frequency_test, runs_test, serial_test]
     test_results = []
@@ -128,6 +131,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
 
 
 
