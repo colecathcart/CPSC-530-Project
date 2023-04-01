@@ -91,6 +91,9 @@ io.on('connection', socket => {
     const obj = Object.values(square)
     if (obj.includes('miss') && !obj.includes('inprogress')){
       console.log('Record move!')
+      if(obj[1].length < 2){
+        obj[1] = '0'.concat(obj[1])
+      }
       moves = moves.concat(obj[1])
       fs.writeFile(__dirname + '/public/moves.txt', moves, (err) => {
           
