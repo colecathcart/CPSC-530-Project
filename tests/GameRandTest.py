@@ -112,7 +112,7 @@ def analyze_nist_results(results, test_names, significance=0.01):
     return (passed_tests / total_tests) * 100
 
 def main():
-    file_path = 'moves (2).txt'
+    file_path = 'moves (6).txt'
     moves = read_moves_from_file(file_path)
     print(moves)
 
@@ -137,6 +137,9 @@ def main():
     total_tests = 0
     passed_tests = 0
 
+    un_hashed_total_tests = 0
+    un_hashed_passed_tests = 0
+
     for i, block in enumerate(blocks):
         print(f"Block {i + 1}:")
         for j, test in enumerate(nist_tests):
@@ -151,23 +154,24 @@ def main():
     for i, block in enumerate(non_hashed_block):
         print(f"Un-Hashed Block {i + 1}:")
         for j, test in enumerate(nist_tests):
-            total_tests += 1
+            un_hashed_total_tests += 1
             p_value = test(block)
             if p_value > 0.01:
                 print(f"  {test_names[j]}: passed")
-                passed_tests += 1
+                un_hashed_passed_tests += 1
             else:
                 print(f"  {test_names[j]}: failed")
 
     percentage_passed = (passed_tests / total_tests) * 100
     print(f'Percentage of NIST tests passed: {percentage_passed}%')
 
-    non_hashed_percentage_passed = (passed_tests / total_tests) * 100
+    non_hashed_percentage_passed = (un_hashed_passed_tests / un_hashed_total_tests) * 100
     print(f'Percentage of NIST tests passed (Un-Hashed): {non_hashed_percentage_passed}%')
 
 
 if __name__ == '__main__':
     main()
+
 
 
 
