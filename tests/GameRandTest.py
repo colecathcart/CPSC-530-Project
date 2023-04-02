@@ -1,8 +1,9 @@
 import os
 import math
 import hashlib
+import numpy as np
 from itertools import product
-from scipy.special import comb
+import scipy.special as spc
 
 
 def read_moves_from_file(file_path):
@@ -100,19 +101,127 @@ def serial_test(block):
     p_value = math.erfc(sum_chi_squared / (2 * math.sqrt(2 * (n - m + 1))))
     return p_value
 
-def analyze_nist_results(results, test_names, significance=0.01):
-    passed_tests = 0
-    total_tests = len(results)
-    for i, result in enumerate(results):
-        if result > significance:
-            print(f"Test {test_names[i]} passed")
-            passed_tests += 1
+#Reference Code: https://gist.github.com/StuartGordonReid/349af3d891e5832272ab
+def random_excursion_test(block):
+    int_data = np.zeros(len(block))
+    for i in range(len(block)):
+        if block[i] == '0':
+            int_data[i] = -1.0
         else:
-            print(f"Test {test_names[i]} failed")
-    return (passed_tests / total_tests) * 100
+            int_data[i] = 1.0
+
+    cumulative_sum = np.cumsum(int_data)
+    cumulative_sum = np.append(cumulative_sum, [0])
+    cumulative_sum = np.append([0], cumulative_sum)
+
+    x_values = np.array([-4, -3, -2, -1, 1, 2, 3, 4])
+    position = np.where(cumulative_sum == 0)[0]
+
+    cycles = []
+    for pos in range(len(position) - 1):
+        cycles.append(cumulative_sum[position[pos]:position[pos + 1] + 1])
+    num_cycles = len(cycles)
+
+    state_count = []
+    for cycle in cycles:
+        state_count.append(([len(np.where(cycle == state)[0]) for state in x_values]))
+    state_count = np.transpose(np.clip(state_count, 0, 5))
+
+    su = []
+    for cycle in range(6):
+        su.append([(sct == cycle).sum() for sct in state_count])
+    su = np.transpose(su)
+
+    piks = ([([get_pik_value(uu, state) for uu in range(6)]) for state in x_values])
+    inner_term = num_cycles * np.array(piks)
+    chi = np.sum(1.0 * (np.array(su) - inner_term) ** 2 / inner_term, axis=1)
+    p_values = ([spc.gammaincc(2.5, cs / 2.0) for cs in chi])
+    return max(p_values)
+
+def get_pik_value(k, x):
+    if k == 0:
+        out = 1 - 1.0 / (2 * np.abs(x))
+    elif k >= 5:
+        out = (1.0 / (2 * np.abs(x))) * (1 - 1.0 / (2 * np.abs(x))) ** 4
+    else:
+        out = (1.0 / (4 * x * x)) * (1 - 1.0 / (2 * np.abs(x))) ** (k - 1)
+    return out
+
+#Reference Code: https://gist.github.com/StuartGordonReid/e2d036d9d90ac67f73c0
+def random_excursion_variant_test(block):
+    int_data = np.zeros(len(block))
+    for i in range(len(block)):
+        int_data[i] = int(block[i])
+    sum_int = (2 * int_data) - np.ones(len(int_data))
+    cumulative_sum = np.cumsum(sum_int)
+
+    li_data = []
+    for xs in sorted(set(cumulative_sum)):
+        if np.abs(xs) <= 9:
+            li_data.append([xs, len(np.where(cumulative_sum == xs)[0])])
+
+    j = get_frequency(li_data, 0) + 1
+    p_values = []
+    for xs in range(-9, 9 + 1):
+        if not xs == 0:
+            den = np.sqrt(2 * j * (4 * np.abs(xs) - 2))
+            p_values.append(spc.erfc(np.abs(get_frequency(li_data, xs) - j) / den))
+    max_p_value = max(p_values)
+    return max_p_value
+
+def get_frequency(list_data, trigger):
+    frequency = 0
+    for (x, y) in list_data:
+        if x == trigger:
+            frequency = y
+    return frequency
+
+def cumulative_sums_test(block, mode='forward'):
+    n = len(block)
+
+    # Covert 0's into -1's
+    x = [-1 if b == 0 else 1 for b in block]
+
+    # Reverse list if running "backwards"
+    if mode == 'backward':
+        x = x[::-1]
+
+    # s = sum of x
+    s = np.cumsum(x)
+    # z = max of absolute values in s
+    z = abs(s).max()
+
+    sum1 = 0
+    for k in range(-n, n+1):
+        if k == 0:
+            continue
+        if k > 0:
+            start = k
+            end = n
+        else:
+            start = 0
+            end = n + k
+
+        sum1 += np.exp(-2 * k ** 2 / n) * (end - start + 1)
+
+    sum2 = 0
+    for k in range(-n + 1, n):
+        if k == 0:
+            continue
+        if k > 0:
+            start = k
+            end = n - 1
+        else:
+            start = 0
+            end = n + k - 1
+
+        sum2 += np.exp(-2 * k ** 2 / n) * (end - start + 1)
+
+    p_value = 1 - (sum1 / (2 * n)) + (sum2 / (2 * n))
+    return p_value
 
 def main():
-    file_path = 'moves (6).txt'
+    file_path = 'moves (1).txt'
     moves = read_moves_from_file(file_path)
     print(moves)
 
@@ -131,8 +240,8 @@ def main():
     blocks = divide_binary_sequence(binary_sequence, block_length)
     print(blocks)
 
-    nist_tests = [frequency_test, runs_test, serial_test]
-    test_names = ["Frequency Test", "Runs Test", "Serial Test"]
+    nist_tests = [frequency_test, runs_test, serial_test, random_excursion_test, random_excursion_variant_test, cumulative_sums_test]
+    test_names = ["Frequency Test", "Runs Test", "Serial Test", "Random Excursion Test", "Random Excursion Variant Test", "Cumulative Sums Test"]
 
     total_tests = 0
     passed_tests = 0
@@ -145,7 +254,7 @@ def main():
         for j, test in enumerate(nist_tests):
             total_tests += 1
             p_value = test(block)
-            if p_value > 0.01:
+            if p_value > 0.05:
                 print(f"  {test_names[j]}: passed")
                 passed_tests += 1
             else:
@@ -156,7 +265,7 @@ def main():
         for j, test in enumerate(nist_tests):
             un_hashed_total_tests += 1
             p_value = test(block)
-            if p_value > 0.01:
+            if p_value > 0.05:
                 print(f"  {test_names[j]}: passed")
                 un_hashed_passed_tests += 1
             else:
@@ -171,9 +280,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
 
 
 
