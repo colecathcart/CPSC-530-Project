@@ -1,6 +1,5 @@
 import os
 import math
-import random
 import hashlib
 from itertools import product
 from scipy.special import comb
@@ -16,8 +15,6 @@ def read_moves_from_file(file_path):
 
 def calculate_entropy(moves):
     move_counts = {}
-    total_moves = len(moves)
-
     for move in moves:
         move_counts[move] = move_counts.get(move, 0) + 1
 
@@ -31,14 +28,21 @@ def calculate_entropy(moves):
 
     return entropy
 
+def convert_moves_to_binary(moves):
+    binary_string = ""
+    for move in moves:
+        binary_string += f"{move[0]:04b}"
+        binary_string += f"{move[1]:04b}"
+    return [int(bit) for bit in binary_string]
+
 
 def divide_binary_sequence(sequence, block_length):
     blocks = [sequence[i:i + block_length] for i in range(0, len(sequence), block_length)]
     return blocks
 
-def extractor(moveset):
+def extractor(moves):
     decimal_string = ""
-    for move in moveset:
+    for move in moves:
         decimal_string += str(move[0])
         decimal_string += str(move[1])
     binary_string = bin(int(decimal_string))[2:]
@@ -96,45 +100,74 @@ def serial_test(block):
     p_value = math.erfc(sum_chi_squared / (2 * math.sqrt(2 * (n - m + 1))))
     return p_value
 
-def analyze_nist_results(results, significance=0.01):
+def analyze_nist_results(results, test_names, significance=0.01):
     passed_tests = 0
     total_tests = len(results)
-    for result in results:
+    for i, result in enumerate(results):
         if result > significance:
+            print(f"Test {test_names[i]} passed")
             passed_tests += 1
+        else:
+            print(f"Test {test_names[i]} failed")
     return (passed_tests / total_tests) * 100
 
 def main():
     file_path = 'moves (2).txt'
     moves = read_moves_from_file(file_path)
     print(moves)
+
     entropy = calculate_entropy(moves)
     print(entropy)
+
+    block_length = 8
+
+    non_hashed_seq = convert_moves_to_binary(moves)
+    print(non_hashed_seq)
+    non_hashed_block = divide_binary_sequence(non_hashed_seq, block_length)
+    print(non_hashed_block)
+
     binary_sequence = extractor(moves)
     print(binary_sequence)
-    block_length = 8
     blocks = divide_binary_sequence(binary_sequence, block_length)
     print(blocks)
 
     nist_tests = [frequency_test, runs_test, serial_test]
-    test_results = []
+    test_names = ["Frequency Test", "Runs Test", "Serial Test"]
 
-    for block in blocks:
-        block_results = []
-        for test in nist_tests:
+    total_tests = 0
+    passed_tests = 0
+
+    for i, block in enumerate(blocks):
+        print(f"Block {i + 1}:")
+        for j, test in enumerate(nist_tests):
+            total_tests += 1
             p_value = test(block)
-            block_results.append(p_value)
-        test_results.append(min(block_results))
+            if p_value > 0.01:
+                print(f"  {test_names[j]}: passed")
+                passed_tests += 1
+            else:
+                print(f"  {test_names[j]}: failed")
 
-    percentage_passed = analyze_nist_results(test_results)
+    for i, block in enumerate(non_hashed_block):
+        print(f"Un-Hashed Block {i + 1}:")
+        for j, test in enumerate(nist_tests):
+            total_tests += 1
+            p_value = test(block)
+            if p_value > 0.01:
+                print(f"  {test_names[j]}: passed")
+                passed_tests += 1
+            else:
+                print(f"  {test_names[j]}: failed")
+
+    percentage_passed = (passed_tests / total_tests) * 100
     print(f'Percentage of NIST tests passed: {percentage_passed}%')
+
+    non_hashed_percentage_passed = (passed_tests / total_tests) * 100
+    print(f'Percentage of NIST tests passed (Un-Hashed): {non_hashed_percentage_passed}%')
+
 
 if __name__ == '__main__':
     main()
-
-
-
-
 
 
 
