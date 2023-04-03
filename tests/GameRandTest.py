@@ -4,6 +4,7 @@ import hashlib
 import numpy as np
 from itertools import product
 import scipy.special as spc
+import scipy.stats as sst
 
 
 def read_moves_from_file(file_path):
@@ -176,53 +177,48 @@ def get_frequency(list_data, trigger):
             frequency = y
     return frequency
 
-def cumulative_sums_test(block, mode='forward'):
+#Reference code: https://gist.github.com/StuartGordonReid/b9024c910e96d6649a88
+def cumulative_sums_test(block, mode='backward'):
     n = len(block)
+    counts = np.zeros(n)
 
-    # Covert 0's into -1's
-    x = [-1 if b == 0 else 1 for b in block]
+    # Calculate the statistic using a walk forward or backwards
+    if mode == "backward":
+        bin_data = block[::-1]
 
-    # Reverse list if running "backwards"
-    if mode == 'backward':
-        x = x[::-1]
-
-    # s = cumulative sum of x
-    s = np.cumsum(x)
-    # z = max of absolute values in s
-    z = abs(s).max()
-
-    # 
-    sum1 = 0
-    for k in range(-n, n+1):
-        if k == 0:
-            continue
-        if k > 0:
-            start = k
-            end = n
+    ix = 0
+    for char in block:
+        sub = 1 if char == '1' else -1
+        if ix > 0:
+            counts[ix] = counts[ix - 1] + sub
         else:
-            start = 0
-            end = n + k
+            counts[ix] = sub
+        ix += 1
 
-        sum1 += np.exp(-2 * k ** 2 / n) * (end - start + 1)
+    # This is the maximum absolute level obtained by the sequence
+    abs_max = np.max(np.abs(counts))
 
-    sum2 = 0
-    for k in range(-n + 1, n):
-        if k == 0:
-            continue
-        if k > 0:
-            start = k
-            end = n - 1
-        else:
-            start = 0
-            end = n + k - 1
+    start = int(np.floor(0.25 * np.floor(-n / abs_max) + 1))
+    end = int(np.floor(0.25 * np.floor(n / abs_max) - 1))
+    terms_one = []
+    for k in range(start, end + 1):
+        sub = sst.norm.cdf((4 * k - 1) * abs_max / np.sqrt(n))
+        terms_one.append(sst.norm.cdf((4 * k + 1) * abs_max / np.sqrt(n)) - sub)
 
-        sum2 += np.exp(-2 * k ** 2 / n) * (end - start + 1)
+    start = int(np.floor(0.25 * np.floor(-n / abs_max - 3)))
+    end = int(np.floor(0.25 * np.floor(n / abs_max) - 1))
+    terms_two = []
+    for k in range(start, end + 1):
+        sub = sst.norm.cdf((4 * k + 1) * abs_max / np.sqrt(n))
+        terms_two.append(sst.norm.cdf((4 * k + 3) * abs_max / np.sqrt(n)) - sub)
 
-    p_value = 1 - (sum1 / (2 * n)) + (sum2 / (2 * n))
-    return p_value
+    p_val = 1.0 - np.sum(np.array(terms_one))
+    p_val += np.sum(np.array(terms_two))
+    print(p_val)
+    return p_val
 
 def main():
-    file_path = 'moves (1).txt'
+    file_path = 'moves (6).txt'
     moves = read_moves_from_file(file_path)
     print(moves)
 
@@ -281,6 +277,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 
