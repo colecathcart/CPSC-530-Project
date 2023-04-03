@@ -186,11 +186,12 @@ def cumulative_sums_test(block, mode='forward'):
     if mode == 'backward':
         x = x[::-1]
 
-    # s = sum of x
+    # s = cumulative sum of x
     s = np.cumsum(x)
     # z = max of absolute values in s
     z = abs(s).max()
 
+    # 
     sum1 = 0
     for k in range(-n, n+1):
         if k == 0:
