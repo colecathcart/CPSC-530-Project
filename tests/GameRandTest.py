@@ -1,6 +1,7 @@
 import os
 import math
 import hashlib
+import copy
 import numpy as np
 from itertools import product
 import scipy.special as spc
@@ -214,8 +215,107 @@ def cumulative_sums_test(block, mode='backward'):
 
     p_val = 1.0 - np.sum(np.array(terms_one))
     p_val += np.sum(np.array(terms_two))
-    print(p_val)
     return p_val
+
+#Reference Code: https://gist.github.com/StuartGordonReid/ff86c5a895fa90b0880e
+def approximate_entropy_test(block, pattern_length=8):
+    n = len(block)
+
+    # Convert binary integers to binary strings
+    new_block = ''.join(str(b) for b in block)
+
+    # Add first m+1 bits to the end
+    # NOTE: documentation says m-1 bits but that doesn't make sense, or work.
+    new_block += new_block[:pattern_length + 1]
+
+    # Get max length one patterns for m, m-1, m-2
+    max_pattern = ''
+    for i in range(pattern_length + 2):
+        max_pattern += '1'
+
+    # Keep track of each pattern's frequency (how often it appears)
+    vobs_one = np.zeros(int(max_pattern[0:pattern_length:], 2) + 1)
+    vobs_two = np.zeros(int(max_pattern[0:pattern_length + 1:], 2) + 1)
+
+    for i in range(n):
+        # Work out what pattern is observed
+        vobs_one[int(new_block[i:i + pattern_length], 2)] += 1
+        vobs_two[int(new_block[i:i + pattern_length + 1], 2)] += 1
+
+    # Calculate the test statistics and p values
+    vobs = [vobs_one, vobs_two]
+    sums = np.zeros(2)
+    for i in range(2):
+        for j in range(len(vobs[i])):
+            if vobs[i][j] > 0:
+                sums[i] += vobs[i][j] * math.log(vobs[i][j] / n)
+        sums[i] /= n
+    ape = sums[0] - sums[1]
+    chi_squared = 2.0 * n * (math.log(2) - ape)
+    p_val = spc.gammaincc(pow(2, pattern_length-1), chi_squared/2.0)
+    return p_val
+
+# Reference Code: https://gist.github.com/StuartGordonReid/a514ed478d42eca49568
+def linear_complexity_test(block, block_size = 4):
+    dof = 6
+    piks = [0.01047, 0.03125, 0.125, 0.5, 0.25, 0.0625, 0.020833]
+
+    t2 = (block_size / 3.0 + 2.0 / 9) / 2 ** block_size
+    mean = 0.5 * block_size + (1.0 / 36) * (9 + (-1) ** (block_size + 1)) - t2
+
+    num_blocks = int(len(block) / block_size)
+    if num_blocks > 1:
+        block_end = block_size
+        block_start = 0
+        blocks = []
+        for i in range(num_blocks):
+            blocks.append(block[block_start:block_end])
+            block_start += block_size
+            block_end += block_size
+
+        complexities = []
+        for block in blocks:
+            complexities.append(berlekamp_massey_algorithm(block))
+
+        t = ([-1.0 * (((-1) ** block_size) * (chunk - mean) + 2.0 / 9) for chunk in complexities])
+        vg = np.histogram(t, bins=[-9999999999, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 9999999999])[0][::-1]
+        im = ([((vg[ii] - num_blocks * piks[ii]) ** 2) / (num_blocks * piks[ii]) for ii in range(7)])
+
+        chi_squared = 0.0
+        for i in range(len(piks)):
+            chi_squared += im[i]
+        p_val = spc.gammaincc(dof / 2.0, chi_squared / 2.0)
+        return p_val
+    else:
+        return -1.0
+
+
+def berlekamp_massey_algorithm(block_data):
+
+    n = len(block_data)
+    c = np.zeros(n)
+    b = np.zeros(n)
+    c[0], b[0] = 1, 1
+    l, m, i = 0, -1, 0
+    int_data = [int(el) for el in block_data]
+    while i < n:
+        v = int_data[(i - l):i]
+        v = v[::-1]
+        cc = c[1:l + 1]
+        d = (int_data[i] + np.dot(v, cc)) % 2
+        if d == 1:
+            temp = copy.copy(c)
+            p = np.zeros(n)
+            for j in range(0, l):
+                if b[j] == 1:
+                    p[j + i - m] = 1
+            c = (c + p) % 2
+            if l <= 0.5 * i:
+                l = i + 1 - l
+                m = i
+                b = temp
+        i += 1
+    return l
 
 def main():
     file_path = 'moves (6).txt'
@@ -237,8 +337,8 @@ def main():
     blocks = divide_binary_sequence(binary_sequence, block_length)
     print(blocks)
 
-    nist_tests = [frequency_test, runs_test, serial_test, random_excursion_test, random_excursion_variant_test, cumulative_sums_test]
-    test_names = ["Frequency Test", "Runs Test", "Serial Test", "Random Excursion Test", "Random Excursion Variant Test", "Cumulative Sums Test"]
+    nist_tests = [frequency_test, runs_test, serial_test, random_excursion_test, random_excursion_variant_test, cumulative_sums_test, approximate_entropy_test, linear_complexity_test]
+    test_names = ["Frequency Test", "Runs Test", "Serial Test", "Random Excursion Test", "Random Excursion Variant Test", "Cumulative Sums Test", "Approximate Entropy Test", "Linear Complexity Test"]
 
     total_tests = 0
     passed_tests = 0
@@ -277,6 +377,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
 
 
 
