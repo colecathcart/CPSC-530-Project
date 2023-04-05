@@ -10,7 +10,10 @@ import scipy.stats as sst
 
 def read_moves_from_file(file_path):
     with open(file_path, 'r') as file:
-        moves_string = file.read().strip()
+        #moves_string = file.read().strip()
+        
+        #allows function to remove all whitespace and newlines
+        moves_string = "".join(file.read().split())
 
     moves = [(int(moves_string[i]), int(moves_string[i + 1])) for i in range(0, len(moves_string), 2)]
     return moves
