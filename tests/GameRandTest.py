@@ -52,7 +52,7 @@ def extractor(moves):
         decimal_string += str(move[0])
         decimal_string += str(move[1])
     binary_string = bin(int(decimal_string))[2:]
-    sha1string = hashlib.sha1(binary_string.encode())
+    sha1string = hashlib.md5(binary_string.encode())
     binary_sha1 = bin((int(sha1string.hexdigest(), 16)))[2:130]
 
     # Convert the binary string to a list of bits

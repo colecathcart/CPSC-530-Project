@@ -1,3 +1,31 @@
+import hashlib
+
+def gethash(moves):
+    decimal_string = ""
+    for move in moves:
+        decimal_string += str(move[0])
+        decimal_string += str(move[1])
+    binary_string = bin(int(decimal_string))[2:]
+    sha1string = hashlib.md5(binary_string.encode())
+    binary_md5 = bin((int(sha1string.hexdigest(), 16)))[2:130]
+
+    print("Hash: " + binary_md5 + "\n")
+
+def generator(moves):
+    count = 0
+    entropy = 0
+    moveset_128 = []
+    for move in moves:
+        moveset_128.append(move)
+        entropy += 5.77
+        #entropy += 6.6
+        if entropy > 128:
+            gethash(moveset_128)
+            count += 1
+            entropy = 0
+            moveset_128 = []
+    print("Total numbers created: " + str(count))
+        
 
 def read_all_files():
     gameno = 1
@@ -41,6 +69,7 @@ def main():
     grid = visualize(moves)
     for row in grid:
         print(row)
+    generator(moves)
     
 if __name__ == '__main__':
     main()
