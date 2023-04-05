@@ -10,29 +10,11 @@ import scipy.stats as sst
 
 def read_moves_from_file(file_path):
     with open(file_path, 'r') as file:
-        #moves_string = file.read().strip()
-        
-        #allows function to remove all whitespace and newlines
-        moves_string = "".join(file.read().split())
+        moves_string = file.read().strip()
 
     moves = [(int(moves_string[i]), int(moves_string[i + 1])) for i in range(0, len(moves_string), 2)]
     return moves
 
-
-def calculate_entropy(moves):
-    move_counts = {}
-    for move in moves:
-        move_counts[move] = move_counts.get(move, 0) + 1
-
-    entropy = 0
-    remaining_moves = 100
-
-    for count in move_counts.values():
-        probability = count / remaining_moves
-        entropy += -probability * math.log2(probability)
-        remaining_moves -= 1
-
-    return entropy
 
 def convert_moves_to_binary(moves):
     binary_string = ""
@@ -52,7 +34,7 @@ def extractor(moves):
         decimal_string += str(move[0])
         decimal_string += str(move[1])
     binary_string = bin(int(decimal_string))[2:]
-    sha1string = hashlib.md5(binary_string.encode())
+    sha1string = hashlib.sha1(binary_string.encode())
     binary_sha1 = bin((int(sha1string.hexdigest(), 16)))[2:130]
 
     # Convert the binary string to a list of bits
@@ -320,13 +302,88 @@ def berlekamp_massey_algorithm(block_data):
         i += 1
     return l
 
+def universal(block: list[int]):
+
+    bin_str = "".join(str(bit) for bit in block)
+
+    # The below table is less relevant for us traders and markets than it is for security people
+    n = len(block)
+
+    pattern_size = 5
+    if n >= 387840:
+        pattern_size = 6
+    if n >= 904960:
+        pattern_size = 7
+    if n >= 2068480:
+        pattern_size = 8
+    if n >= 4654080:
+        pattern_size = 9
+    if n >= 10342400:
+        pattern_size = 10
+    if n >= 22753280:
+        pattern_size = 11
+    if n >= 49643520:
+        pattern_size = 12
+    if n >= 107560960:
+        pattern_size = 13
+    if n >= 231669760:
+        pattern_size = 14
+    if n >= 496435200:
+        pattern_size = 15
+    if n >= 1059061760:
+        pattern_size = 16
+
+    if 5 < pattern_size < 16:
+        # Create the biggest binary string of length pattern_size
+        ones = ""
+        for i in range(pattern_size):
+            ones += "1"
+
+        # How long the state list should be
+        num_ints = int(ones, 2)
+        vobs = np.zeros(num_ints + 1)
+
+        # Keeps track of the blocks, and whether were are initializing or summing
+        num_blocks = math.floor(n / pattern_size)
+        init_bits = 10 * pow(2, pattern_size)
+        test_bits = num_blocks - init_bits
+
+        # These are the expected values assuming randomness (uniform)
+        c = 0.7 - 0.8 / pattern_size + (4 + 32 / pattern_size) * pow(test_bits, -3 / pattern_size) / 15
+        variance = [0, 0, 0, 0, 0, 0, 2.954, 3.125, 3.238, 3.311, 3.356, 3.384, 3.401, 3.410, 3.416, 3.419, 3.421]
+        expected = [0, 0, 0, 0, 0, 0, 5.2177052, 6.1962507, 7.1836656, 8.1764248, 9.1723243,
+                    10.170032, 11.168765, 12.168070, 13.167693, 14.167488, 15.167379]
+        sigma = c * math.sqrt(variance[pattern_size] / test_bits)
+
+        cumsum = 0.0
+        for i in range(num_blocks):
+            block_start = i * pattern_size
+            block_end = block_start + pattern_size
+            block_data = bin_str[block_start: block_end]
+            # Work out what state we are in
+            int_rep = int(block_data, 2)
+
+            # Initialize the state list
+            if i < init_bits:
+                vobs[int_rep] = i + 1
+            else:
+                initial = vobs[int_rep]
+                vobs[int_rep] = i + 1
+                cumsum += math.log(i - initial + 1, 2)
+
+        # Calculate the statistic
+        phi = float(cumsum / test_bits)
+        stat = abs(phi - expected[pattern_size]) / (float(math.sqrt(2)) * sigma)
+        p_val = spc.erfc(stat)
+        return p_val
+    else:
+        return -1.0
+
+
 def main():
     file_path = 'moves (6).txt'
     moves = read_moves_from_file(file_path)
     print(moves)
-
-    entropy = calculate_entropy(moves)
-    print(entropy)
 
     block_length = 8
 
@@ -349,6 +406,9 @@ def main():
     un_hashed_total_tests = 0
     un_hashed_passed_tests = 0
 
+    test_counters = [0] * len(nist_tests)
+    un_hashed_test_counters = [0] * len(nist_tests)
+
     for i, block in enumerate(blocks):
         print(f"Block {i + 1}:")
         for j, test in enumerate(nist_tests):
@@ -357,6 +417,7 @@ def main():
             if p_value > 0.05:
                 print(f"  {test_names[j]}: passed")
                 passed_tests += 1
+                test_counters[j] += 1
             else:
                 print(f"  {test_names[j]}: failed")
 
@@ -368,19 +429,30 @@ def main():
             if p_value > 0.05:
                 print(f"  {test_names[j]}: passed")
                 un_hashed_passed_tests += 1
+                un_hashed_test_counters[j] += 1
             else:
                 print(f"  {test_names[j]}: failed")
 
+    print('--------------------------------------------------------------------------')
     percentage_passed = (passed_tests / total_tests) * 100
     print(f'Percentage of NIST tests passed: {percentage_passed}%')
 
+    print('--------------------------------------------------------------------------')
     non_hashed_percentage_passed = (un_hashed_passed_tests / un_hashed_total_tests) * 100
     print(f'Percentage of NIST tests passed (Un-Hashed): {non_hashed_percentage_passed}%')
 
+    print('--------------------------------------------------------------------------')
+    print("Individual test pass counts: ")
+    for i, test_name in enumerate(test_names):
+        print(f"{test_name}: {test_counters[i]}")
+
+    print('--------------------------------------------------------------------------')
+    print("Individual un-hashed test pass counts: ")
+    for i, test_name in enumerate(test_names):
+        print(f"{test_name}: {un_hashed_test_counters[i]}")
 
 if __name__ == '__main__':
     main()
-
 
 
 
