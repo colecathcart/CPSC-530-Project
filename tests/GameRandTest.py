@@ -7,10 +7,9 @@ from itertools import product
 import scipy.special as spc
 import scipy.stats as sst
 
-
 def read_moves_from_file(file_path):
     with open(file_path, 'r') as file:
-        moves_string = file.read().strip()
+        moves_string = ''.join(line.strip() for line in file)
 
     moves = [(int(moves_string[i]), int(moves_string[i + 1])) for i in range(0, len(moves_string), 2)]
     return moves
@@ -381,7 +380,7 @@ def universal(block: list[int]):
 
 
 def main():
-    file_path = 'moves (6).txt'
+    file_path = 'allMoves.txt'
     moves = read_moves_from_file(file_path)
     print(moves)
 
