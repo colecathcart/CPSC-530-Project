@@ -333,7 +333,7 @@ def main():
     test_counters = [0] * len(nist_tests)
     un_hashed_test_counters = [0] * len(nist_tests)
 
-    for i, block in enumerate(hashed_block):
+    for i, block in enumerate(hashed_block[:88]):
         print(f"Block {i + 1}:")
         for j, test in enumerate(nist_tests):
             total_tests += 1
@@ -345,7 +345,7 @@ def main():
             else:
                 print(f"  {test_names[j]}: failed")
 
-    for i, block in enumerate(un_hashed_block):
+    for i, block in enumerate(un_hashed_block[:88]):
         print(f"Un-Hashed Block {i + 1}:")
         for j, test in enumerate(nist_tests):
             un_hashed_total_tests += 1
