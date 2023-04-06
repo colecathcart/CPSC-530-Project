@@ -302,6 +302,7 @@ def berlekamp_massey_algorithm(block_data):
         i += 1
     return l
 
+
 def main():
     file_path = 'allMoves.txt'
     moves = read_moves_from_file(file_path)
@@ -333,8 +334,12 @@ def main():
     test_counters = [0] * len(nist_tests)
     un_hashed_test_counters = [0] * len(nist_tests)
 
+    all_tests_passed = []
+    all_tests_passed_un_hashed = []
+
     for i, block in enumerate(hashed_block[:88]):
         print(f"Block {i + 1}:")
+        all_tests_passed_flag = True
         for j, test in enumerate(nist_tests):
             total_tests += 1
             p_value = test(block)
@@ -344,9 +349,13 @@ def main():
                 test_counters[j] += 1
             else:
                 print(f"  {test_names[j]}: failed")
+                all_tests_passed_flag = False
+        if all_tests_passed_flag:
+            all_tests_passed.append(block)
 
     for i, block in enumerate(un_hashed_block[:88]):
         print(f"Un-Hashed Block {i + 1}:")
+        all_tests_passed_flag = True
         for j, test in enumerate(nist_tests):
             un_hashed_total_tests += 1
             p_value = test(block)
@@ -356,24 +365,26 @@ def main():
                 un_hashed_test_counters[j] += 1
             else:
                 print(f"  {test_names[j]}: failed")
+                all_tests_passed_flag= False
+        if all_tests_passed_flag:
+            all_tests_passed_un_hashed.append(un_hashed_block)
+
 
     print('--------------------------------------------------------------------------')
     percentage_passed = (passed_tests / total_tests) * 100
     print(f'Percentage of NIST tests passed: {percentage_passed}%')
+    print("Individual test pass counts: ")
+    for i, test_name in enumerate(test_names):
+        print(f"{test_name}: {test_counters[i]}")
+    print(f"Number of blocks that passed all tests: {len(all_tests_passed)}")
 
     print('--------------------------------------------------------------------------')
     non_hashed_percentage_passed = (un_hashed_passed_tests / un_hashed_total_tests) * 100
     print(f'Percentage of NIST tests passed (Un-Hashed): {non_hashed_percentage_passed}%')
-
-    print('--------------------------------------------------------------------------')
-    print("Individual test pass counts: ")
-    for i, test_name in enumerate(test_names):
-        print(f"{test_name}: {test_counters[i]}")
-
-    print('--------------------------------------------------------------------------')
     print("Individual un-hashed test pass counts: ")
     for i, test_name in enumerate(test_names):
         print(f"{test_name}: {un_hashed_test_counters[i]}")
+    print(f"Number of blocks that passed all tests: {len(all_tests_passed_un_hashed)}")
 
 if __name__ == '__main__':
     main()
