@@ -27,6 +27,7 @@ def divide_binary_sequence(sequence, block_length):
     blocks = [sequence[i:i + block_length] for i in range(0, len(sequence), block_length)]
     return blocks
 
+
 def extractor(moves):
     decimal_string = ""
     for move in moves:
@@ -301,100 +302,24 @@ def berlekamp_massey_algorithm(block_data):
         i += 1
     return l
 
-def universal(block: list[int]):
-
-    bin_str = "".join(str(bit) for bit in block)
-
-    # The below table is less relevant for us traders and markets than it is for security people
-    n = len(block)
-
-    pattern_size = 5
-    if n >= 387840:
-        pattern_size = 6
-    if n >= 904960:
-        pattern_size = 7
-    if n >= 2068480:
-        pattern_size = 8
-    if n >= 4654080:
-        pattern_size = 9
-    if n >= 10342400:
-        pattern_size = 10
-    if n >= 22753280:
-        pattern_size = 11
-    if n >= 49643520:
-        pattern_size = 12
-    if n >= 107560960:
-        pattern_size = 13
-    if n >= 231669760:
-        pattern_size = 14
-    if n >= 496435200:
-        pattern_size = 15
-    if n >= 1059061760:
-        pattern_size = 16
-
-    if 5 < pattern_size < 16:
-        # Create the biggest binary string of length pattern_size
-        ones = ""
-        for i in range(pattern_size):
-            ones += "1"
-
-        # How long the state list should be
-        num_ints = int(ones, 2)
-        vobs = np.zeros(num_ints + 1)
-
-        # Keeps track of the blocks, and whether were are initializing or summing
-        num_blocks = math.floor(n / pattern_size)
-        init_bits = 10 * pow(2, pattern_size)
-        test_bits = num_blocks - init_bits
-
-        # These are the expected values assuming randomness (uniform)
-        c = 0.7 - 0.8 / pattern_size + (4 + 32 / pattern_size) * pow(test_bits, -3 / pattern_size) / 15
-        variance = [0, 0, 0, 0, 0, 0, 2.954, 3.125, 3.238, 3.311, 3.356, 3.384, 3.401, 3.410, 3.416, 3.419, 3.421]
-        expected = [0, 0, 0, 0, 0, 0, 5.2177052, 6.1962507, 7.1836656, 8.1764248, 9.1723243,
-                    10.170032, 11.168765, 12.168070, 13.167693, 14.167488, 15.167379]
-        sigma = c * math.sqrt(variance[pattern_size] / test_bits)
-
-        cumsum = 0.0
-        for i in range(num_blocks):
-            block_start = i * pattern_size
-            block_end = block_start + pattern_size
-            block_data = bin_str[block_start: block_end]
-            # Work out what state we are in
-            int_rep = int(block_data, 2)
-
-            # Initialize the state list
-            if i < init_bits:
-                vobs[int_rep] = i + 1
-            else:
-                initial = vobs[int_rep]
-                vobs[int_rep] = i + 1
-                cumsum += math.log(i - initial + 1, 2)
-
-        # Calculate the statistic
-        phi = float(cumsum / test_bits)
-        stat = abs(phi - expected[pattern_size]) / (float(math.sqrt(2)) * sigma)
-        p_val = spc.erfc(stat)
-        return p_val
-    else:
-        return -1.0
-
-
 def main():
     file_path = 'allMoves.txt'
     moves = read_moves_from_file(file_path)
     print(moves)
+    moves_23 = divide_binary_sequence(moves, 23)
+    print(moves_23)
 
-    block_length = 8
+    un_hashed_block = []
+    hashed_block = []
 
-    non_hashed_seq = convert_moves_to_binary(moves)
-    print(non_hashed_seq)
-    non_hashed_block = divide_binary_sequence(non_hashed_seq, block_length)
-    print(non_hashed_block)
+    for moves in moves_23:
+        non_hashed_seq = convert_moves_to_binary(moves)
+        un_hashed_block.append(non_hashed_seq)
 
-    binary_sequence = extractor(moves)
-    print(binary_sequence)
-    blocks = divide_binary_sequence(binary_sequence, block_length)
-    print(blocks)
+    for moves in moves_23:
+        binary_sequence = extractor(moves)
+        hashed_block.append(binary_sequence)
+
 
     nist_tests = [frequency_test, runs_test, serial_test, random_excursion_test, random_excursion_variant_test, cumulative_sums_test, approximate_entropy_test, linear_complexity_test]
     test_names = ["Frequency Test", "Runs Test", "Serial Test", "Random Excursion Test", "Random Excursion Variant Test", "Cumulative Sums Test", "Approximate Entropy Test", "Linear Complexity Test"]
@@ -408,7 +333,7 @@ def main():
     test_counters = [0] * len(nist_tests)
     un_hashed_test_counters = [0] * len(nist_tests)
 
-    for i, block in enumerate(blocks):
+    for i, block in enumerate(hashed_block):
         print(f"Block {i + 1}:")
         for j, test in enumerate(nist_tests):
             total_tests += 1
@@ -420,7 +345,7 @@ def main():
             else:
                 print(f"  {test_names[j]}: failed")
 
-    for i, block in enumerate(non_hashed_block):
+    for i, block in enumerate(un_hashed_block):
         print(f"Un-Hashed Block {i + 1}:")
         for j, test in enumerate(nist_tests):
             un_hashed_total_tests += 1
@@ -452,6 +377,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 
