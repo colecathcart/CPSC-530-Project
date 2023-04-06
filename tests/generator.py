@@ -1,4 +1,5 @@
 import hashlib
+import math
 
 def gethash(moves):
     decimal_string = ""
@@ -62,6 +63,13 @@ def visualize(moves):
         grid[move[0]][move[1]] += 1
     return grid
 
+def shannon_entropy(grid):
+    shannon_entropy = 0
+    for i in grid:
+        for j in i:
+            shannon_entropy += (j/2025)*(math.log2((1/2025)))
+    return -shannon_entropy
+
 def main():
     file_path = 'games/allgames.txt'
     #read_all_files()
@@ -70,6 +78,7 @@ def main():
     for row in grid:
         print(row)
     generator(moves)
+    print("Shannon entropy: " + str(shannon_entropy(grid)))
     
 if __name__ == '__main__':
     main()
