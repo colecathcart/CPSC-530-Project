@@ -5,8 +5,7 @@ the members of group 3. The original version
 is published here: https://github.com/kubowania/battleships
 The original game is published under a public MIT license
 with full consent from the original authors to reuse and edit
-this software. The original license is included in the original
-README contents below
+this software. The original license is included in this repo for reference. All test scripts were created by the members of group 3 and can be found in the 'tests' folder.
 
 INSTRUCTIONS FOR RUNNING/TESTING
  - ~~NOTE: You can currently go to 'battleshipg3.herokuapp.com' to see a live version of our edited version, no setup required. The rest of the instructions are for setup on a local machine~~
