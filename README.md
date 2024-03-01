@@ -9,7 +9,7 @@ this software. The original license is included in the original
 README contents below
 
 INSTRUCTIONS FOR RUNNING/TESTING
- - NOTE: You can currently go to 'battleshipg3.herokuapp.com' to see a live version of our edited version, no setup required. The rest of the instructions are for setup on a local machine
+ - ~~NOTE: You can currently go to 'battleshipg3.herokuapp.com' to see a live version of our edited version, no setup required. The rest of the instructions are for setup on a local machine~~
 
  - You must have nodeJS installed on your system
  - Navigate into this directory on the terminal and enter'npm start' or 'npm run dev' 
